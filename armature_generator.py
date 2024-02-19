@@ -101,11 +101,16 @@ while video.isOpened():
         delta_x, delta_y = point1[0] - point2[0], point1[1] - point2[1]
         rads = np.arctan2(delta_y, delta_x)
         degrees = np.degrees(rads)
-        f.write("{:.6f} ".format(0) + "{:.6f} ".format(degrees) + "{:.6f} ".format(0))          # Rotación en Y
+        rotation = degrees
+        if i > 0:
+            rotation -= last_degrees
+        f.write("{:.6f} ".format(0) + "{:.6f} ".format(rotation) + "{:.6f} ".format(0))          # Rotación en Y
+        last_degrees = degrees         # Para calcular los grados necesitamos la referencia del anterior punto
     f.write("\n")
-    # cv.imshow('skeleton', branch)
-    # if cv.waitKey(1) & 0xFF == ord('q'):
-    #     break                                 Descomentar estas tres para imprimir cada frame del esqueleto después del procesamiento
+
+#    cv.imshow('skeleton', branch)
+#    if cv.waitKey(1) & 0xFF == ord('q'):
+#        break                                # Descomentar estas tres para imprimir cada frame del esqueleto después del procesamiento
 
 video.release()
 cv.destroyAllWindows()
