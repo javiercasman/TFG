@@ -1,22 +1,22 @@
 import bpy
 
-obj = bpy.data.objects["arm_ref"]    #punto de referencia de coordenadas para importar el armature
+def import_armature():
+    obj = bpy.data.objects["arm_ref"]    #punto de referencia de coordenadas para importar el armature
 
-bpy.ops.import_anim.bvh(filepath="armature.bvh",  axis_forward='Y', axis_up='Z')
+    bpy.ops.import_anim.bvh(filepath="armature.bvh",  axis_forward='Y', axis_up='Z')
 
-armature = bpy.data.objects["armature"]
+    armature = bpy.data.objects["armature"]
 
-#bpy.data.collections["Collection"].objects.link(armature)
+    #bpy.data.collections["Collection"].objects.link(armature)
 
-armature.location = obj.location
+    armature.location = obj.location
 
+    llama = bpy.data.objects["Llama"]
 
-llama = bpy.data.objects["Llama"]
+    llama.select_set(True)
+    armature.select_set(True)
 
-llama.select_set(True)
-armature.select_set(True)
+    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
 
-bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-
-armature.hide_viewport = True
-armature.hide_render = True
+#    armature.hide_viewport = True
+    armature.hide_render = True
