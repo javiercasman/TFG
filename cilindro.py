@@ -41,54 +41,10 @@ if armature:
     #    loc.z += altura_cilindro/2
     loc = llama.location
     cilindro.location = loc
-#
-    """
+
     bpy.context.view_layer.objects.active = cilindro
     bpy.context.view_layer.update()
-    
-    bm = bmesh.new()
-    
-    bpy.ops.object.mode_set(mode='EDIT')
-    mesh = cilindro.data
-    bm.from_mesh(mesh)
-    bpy.ops.object.mode_set(mode='OBJECT')
-        
-    vertices = [v for v in bm.verts if v.co.z < 0.0]
-    new_vertices = []
-    for z in division_points:
-        new_vertices.append([])
-        for v in vertices:
-            local_coords = v.co
-            global_coords = cilindro.matrix_world @ local_coords
-            global_coords.z = offset + z
-            local_coords = cilindro.matrix_world.inverted() @ global_coords
-            new_vert = bm.verts.new(local_coords)
-            new_vertices[-1].append(new_vert)
 
-    
-    for e in new_vertices:
-        for i in range(len(e)):
-            if(i == len(e)-1): new_edge = bm.edges.new((e[i], e[0]))
-            else: new_edge = bm.edges.new((e[i], e[i+1]))
-
-    # Volver al modo de objeto y actualizar la malla
-    bpy.ops.object.mode_set(mode='OBJECT')
-    bm.to_mesh(mesh)
-    bm.free()
-    """
-#
-
-    bpy.context.view_layer.objects.active = armature
-    
-    armature.select_set(True)
-    cilindro.select_set(True)
-
-    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-    armature.select_set(False)   
-#    
-    bpy.context.view_layer.objects.active = cilindro
-    bpy.context.view_layer.update()
-    
     bpy.ops.object.mode_set(mode='EDIT')
     region, rv3d, v3d, area = view3d_find(True)
     local_division_points=[]
@@ -96,12 +52,18 @@ if armature:
         value_z = z + offset         # Coordenada z global
         global_coords = Vector((0.0,0.0,value_z))
         local_coords = cilindro.matrix_world.inverted() @ global_coords
-        local_division_points.append(local_coords.z)
+        local_division_points.append(local_coords.z+(altura_cilindro/2))
+
     with bpy.context.temp_override(scene=bpy.context.scene, region=region, area=area, space=v3d):
-        for i in range(len(local_division_points)):
-            value = local_division_points[i]
-            if i > 0: value -= local_division_points[i-1]
-            value = -value + (1 - value) #Corregir
+        for idx, x in enumerate(local_division_points):
+            value = x
+            print("Valor local:",value)
+            if idx > 0: 
+                value -= local_division_points[idx-1]
+                value = value / (1 - local_division_points[idx-1])
+            print("Reescalado es:", value)
+            value = -value + (1 - value)
+            print("Despues de formula:",value)
             bpy.ops.mesh.loopcut_slide(MESH_OT_loopcut={"number_cuts":1, "smoothness":0, "falloff":'INVERSE_SQUARE', "object_index":0, 
                                     "edge_index":2, "mesh_select_mode_init":(False, True, False)}, 
                                     TRANSFORM_OT_edge_slide={"value":value, "single_side":False, "use_even":False, "flipped":False, 
@@ -109,8 +71,14 @@ if armature:
                                     "snap_target":'CLOSEST', "use_snap_self":True, "use_snap_edit":True, "use_snap_nonedit":True, 
                                     "use_snap_selectable":False, "snap_point":(0, 0, 0), "correct_uv":True, "release_confirm":True, 
                                     "use_accurate":False, "alt_navigation":False})
-        # Borra cualquier selección existente
+    
+    bpy.ops.object.mode_set(mode='OBJECT') 
+    bpy.context.view_layer.objects.active = armature
+    
+    armature.select_set(True)
+    cilindro.select_set(True)
 
-#
+    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+    bpy.ops.object.select_all(action='DESELECT')
 else:
     print("Armature no encontrado.") 
