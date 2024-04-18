@@ -1,0 +1,51 @@
+ generate_cylinder(flame_video_name)
+	lee nombre_video
+	busca si el vídeo tiene los archivos generados por generate_armature
+	si no:
+		raiseError(...)
+	busca si existe el archivo con los parámetros del cilindro
+	si no:
+		raiseError(...)
+	
+	comprueba si el nombre del armature correspondiente a flame_video_name existe
+	si existe:
+		armature = el armature de la escena
+		bound_name = el nombre del cilindro
+		si el cilindro no existe en la escena:
+			pasar a modo object
+            deselect all
+            offset = coordenadas globales de la base del armature
+            llama = el objeto de la llama
+
+            altura cilindro = altura llama + 0.01 (para q no se produzca el bug)
+            radio cilindro = radio de la llama + un poquito más para que quepa la llama en el cilindro
+
+            añadir cilindro con altura y radio mencionados
+            le cambiamos el nombre por bound_name
+
+            cilindro = el cilindro que acabamos de crear (el active_object)
+
+            loc = location de la llama
+            cilindro.location = loc
+
+            deselect all
+            objeto activo = cilindro
+            pasar a modo edit
+            update escena
+            abrimos fichero cfg (el que tiene los parámetros del cilindro en cada frame):
+                lines = lineas del archivo
+            lines contiene todas las lineas del archivo, cada línea a partir de la segunda representa un frame, y cada línea consta de 12 parejas, las distancias izquierda y derecha de cada anillo,
+            es decir tiene la siguiente forma:
+            linea0_izq linea0_der linea1_izq linea1_der … … linea11_izq linea11_der
+            la primera linea, en cambio, son los puntos de la llama donde se hacen estas líneas. Es decir, las coordenadas de la
+            llama donde el cilindro tendrá los anillos. 
+            guardamos estos puntos en division_points
+            for i in division_points:
+                pasamos i a coordenadas locales del cilindro. Esto servirá para poder hacer los loop cuts
+
+            usamos una función para encontrar unos parámetros de otra función que tenemos que usar para que funcione el loopcut and slide.
+            es un lío, lo encontré en un foro y funcionó:
+            for idx, x in enumerate(local_division_points):
+                EXPLICACIÓN: la función loopcut and slide funciona de tal manera que el lugar en el que cortas se calcula con un value [-1.0, 1.0],
+                siendo 0.0 la zona inferior y 1.0 la zona superior. Una vez haces un corte, creas dos subdivisiones. Bien, pues luego estas dos
+                subdivisiones tambien tienen su respectivo rango de [-1.0, 1.0], se explica mejor con la siguiente imagen:
