@@ -20,7 +20,7 @@ def rgb_to_kelvin(rgb):
 
 frames = 0
 fps = 24
-length, width = 854, 480
+width, height = 854, 480
 video = cv.VideoCapture("flame.mp4")
 source = cv.imread("candle-flame.jpg")
 while video.isOpened():
@@ -29,7 +29,7 @@ while video.isOpened():
         print("ERROR: No se ha podido leer el frame.\n")
         break
     frames += 1
-    resized_frame = cv.resize(frame, (length,width), interpolation=cv.INTER_LINEAR)     # Reescalado a 854x480
+    resized_frame = cv.resize(frame, (width,height), interpolation=cv.INTER_LINEAR)     # Reescalado a 854x480
 
     if(frames == 1):
         gris = cv.cvtColor(resized_frame, cv.COLOR_BGR2GRAY)

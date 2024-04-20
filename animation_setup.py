@@ -139,7 +139,6 @@ def animation_setup(flame_video_name):
                     bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
 
                     if w_left > w_right:
-                        print(idx, "w_left > w_right")
                         new_radio = radio_cilindro + w_left
                         resize_scale = new_radio / radio_cilindro
                         
@@ -181,7 +180,6 @@ def animation_setup(flame_video_name):
                         bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)                      
 
                     elif w_left < w_right:
-                        print(idx, "w_left < w_right")
                         new_radio = radio_cilindro + w_right
                         resize_scale = new_radio / radio_cilindro
                         
@@ -223,7 +221,6 @@ def animation_setup(flame_video_name):
                         bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
 
                     else: #es probable q sean iguales, asi q sera un scale simple
-                        print(idx, "igual")
                         new_radio = radio_cilindro + w_right
                         resize_scale = new_radio / radio_cilindro
                         
@@ -266,8 +263,10 @@ def animation_setup(flame_video_name):
             bpy.ops.object.select_all(action='DESELECT')
 
             temperature = float(lines[-1])
-
-            bpy.data.materials["Llama"].node_tree.nodes["Emission.002"].inputs[0].default_value = temperature
+            bpy.data.materials["Llama"].node_tree.nodes["Blackbody"].inputs[0].default_value = temperature
+            bpy.data.images['candle-flame.jpg'].filepath = directory + ("//") + "candle-flame_" + flame_name + ".jpg" #CAMBIABLE?
+            cilindro.hide_set(True)
+            cilindro.hide_render = True
 
         else:
             print("El bounding cylinder ya existe")

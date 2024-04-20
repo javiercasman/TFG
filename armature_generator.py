@@ -15,28 +15,34 @@ def tab_writer(i,f):      # Ayuda a generar las tabulaciones en el fichero '.bvh
     for k in range(i+1):
         f.write("\t")
 
+def resize_aspect_ratio(image, new_width):
+    width = image.shape[1]
+    w_diff = new_width - width
+    border = w_diff // 2
+    print(border)
+    bordered_image = cv.copyMakeBorder(image, 0, 0, border, border, cv.BORDER_CONSTANT, value=(0,0,0))
+    return bordered_image, border
+
+
 def generate_armature(flame_video_name, k, w, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
     video_path = bpy.path.abspath("//") + flame_video_name
     if os.path.exists(video_path):
+        flame_name = flame_video_name.split('.')[0]
+        directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
         bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
         cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
-        flame_mh_path = directory + ("//") + "candle-flame-" + flame_name + ".jpg"
+        flame_mh_path = directory + ("//") + "candle-flame_" + flame_name + ".jpg"
         write_armature_file = not(os.path.exists(bvh_file_path))
         write_config_file = not(os.path.exists(cfg_file_path))
         generate_flame_mh = not(os.path.exists(flame_mh_path))
-        #execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
-        execute = True
+        execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
         if execute:
-            flame_name = flame_video_name.split('.')[0]
-            directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
-
-            source = cv.imread(bpy.path.abspath("//") + "candle-flame.jpg")
             if not os.path.exists(directory):
                 os.makedirs(directory)
             frames = 0
             fps = 24
-            length, width = 854, 480
+            width, height = 854, 480
             if write_armature_file:
                 f = open(bvh_file_path, "w")
                 f.write("HIERARCHY\nROOT Bone\n{\n")
@@ -52,19 +58,17 @@ def generate_armature(flame_video_name, k, w,
                     break
                 frames += 1
 
-                resized_frame = cv.resize(frame, (length,width), interpolation=cv.INTER_LINEAR)     # Reescalado a 854x480
+                resized_frame = cv.resize(frame, (width,height), interpolation=cv.INTER_LINEAR)     # Reescalado a 854x480
                 
                 gray_frame = cv.cvtColor(resized_frame, cv.COLOR_BGR2GRAY)
 
                 if(frames == 1):
                     if(generate_flame_mh):
-                        source_eq = exposure.equalize_hist(resized_frame)
-                        cv.imshow('eq', source_eq)
+                        source = cv.imread(bpy.path.abspath("//") + "candle-flame.jpg")
+                        source, border = resize_aspect_ratio(source, width)
                         matched = match_histograms(source,resized_frame,channel_axis=-1)
-                        #cv.imshow('frame', resized_frame)
-                        #cv.imshow('source', source)
-                        #cv.imshow('matched', matched)
-                        cv.imwrite(flame_mh_path, matched)
+                        cropped_matched = matched[::,border:-border]
+                        cv.imwrite(flame_mh_path, cropped_matched)
 
                     if(write_config_file):
                         _, thresh = cv.threshold(gray_frame, 35, 255, cv.THRESH_BINARY) 
@@ -92,20 +96,18 @@ def generate_armature(flame_video_name, k, w,
                             temperature += cct
                             count += 1
                         temperature /= count
-                    return False
-
 
                 ret, thresh = cv.threshold(gray_frame,110,255,cv.THRESH_BINARY)
 
                 skel = skeletonize(thresh)
                 skel_image = img_as_ubyte(skel)
-                pruned_skeleton, segmented_img, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto
+                pruned_skeleton, _, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto
 
                 corners = cv.cornerHarris(pruned_skeleton,2,27,0.02)        # Detección de las esquinas de la(s) pata(s) inferior(es)
                 corners = cv.dilate(corners, None)        # Dilatación de las esquinas detectadas para facilitar su eliminación
 
                 pruned_skeleton[corners>0.01*corners.max()] = 0        # Esquinas del esqueleto pintadas de negro, patas separadas
-                segmented_img, segment_objects = pcv.morphology.segment_skeleton(skel_img=pruned_skeleton)      # Dividimos el esqueleto en segmentos una vez separadas las patas
+                _, segment_objects = pcv.morphology.segment_skeleton(skel_img=pruned_skeleton)      # Dividimos el esqueleto en segmentos una vez separadas las patas
                 longest_segment = max(segment_objects, key=len)        # Cogemos el segmento más largo, es decir, el vertical, del cual generaremos los huesos
                 N = (len(longest_segment) / 2) + 1
                 longest_segment = longest_segment[:int(N)]        # Por algún motivo, el segmento devuelto por la función tiene la forma [x0y0, x1y1, ..., xn-1yn-1, xnyn, xn-1yn-1, xn-2yn-2, ..., x1y1], con esto cogemos directamente la mitad de la lista, es decir 

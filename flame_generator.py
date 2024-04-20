@@ -29,7 +29,7 @@ view_flame_skel = False                 # True para ver la llama en blanco y neg
 try:
     generate_armature(flame_video_name, bones, width_rings - 1, view_gray, 
                     view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel)
-#    import_armature(flame_video_name)
-#    animation_setup(flame_video_name)#le pasamos el nombre del video no?
+    import_armature(flame_video_name)
+    animation_setup(flame_video_name)
 except Exception as e:
     print(f"Se produjo un error: {e}")

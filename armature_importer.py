@@ -5,11 +5,11 @@ def import_armature(flame_video_name):
     flame_name = flame_video_name.split('.')[0]
     directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name
     if not os.path.exists(directory):
-        raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".\nPara solucionarlo, debe activar write_armature_file y/o write_cylinder_config_file")
+        raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".")
     armature_name = "Armature_" + flame_name
     bvh_file_path = directory + ("//") + armature_name + ".bvh"
     if not os.path.exists(bvh_file_path):
-            raise FileNotFoundError("No existe ningun armature llamado \"" + armature_name + "\".\nPara generarlo, debe activar write_armature_file")
+            raise FileNotFoundError("No existe ningun armature llamado \"" + armature_name + "\".")
     if armature_name not in bpy.context.scene.objects.keys():
         obj = bpy.data.objects["arm_ref"]    #punto de referencia de coordenadas para importar el armature
         bpy.ops.import_anim.bvh(filepath=bvh_file_path,  axis_forward='Y', axis_up='Z')
@@ -29,5 +29,6 @@ def import_armature(flame_video_name):
 
     #    armature.hide_viewport = True
         armature.hide_render = True
+        armature.hide_set(True)
     else:
         print("El armature ya está importado")
