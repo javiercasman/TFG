@@ -1,5 +1,4 @@
 import bpy
-import bmesh
 from mathutils import Vector
 import os
 
@@ -18,26 +17,14 @@ def view3d_find( return_area = False ):
                     return region, rv3d, v3d
     return None, None
 
-def find_edge_loops(loop,max_loops=1000):
-    i=0
-    first_loop=loop
-    while i<max_loops: 
-        # Jump to adjacent face and walk two edges forward
-        loop = loop.link_loop_next.link_loop_radial_next.link_loop_next
-        loop.edge.select = True
-        i += 1
-        # If radial loop links back here, we're boundary, thus done        
-        if loop == first_loop:
-            break  
-
-def generate_cylinder(flame_video_name):
+def animation_setup(flame_video_name):
     flame_name = flame_video_name.split('.')[0]
     directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name
     if not os.path.exists(directory):
-        raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".\nPara solucionarlo, debe activar write_armature_file y/o write_cylinder_config_file")
-    cfg_file_path = directory + ("//") + "Cylinder_" + flame_name + ".cfg"
+        raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".\n")
+    cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
     if not os.path.exists(cfg_file_path):
-        raise FileNotFoundError("No existe ningun armature llamado \"" + armature_name + "\".\nPara generarlo, debe activar write_cylinder_config_file")
+        raise FileNotFoundError("No existe ningun archivo de configuracion llamado \"" + "Config_" + flame_name + ".cfg" + "\".\n")
     
     armature_name = "Armature_" + flame_name
     if armature_name in bpy.context.scene.objects.keys():
@@ -277,6 +264,10 @@ def generate_cylinder(flame_video_name):
             bpy.context.view_layer.objects.active = llama
             bpy.ops.object.meshdeform_bind(modifier='MeshDeform')
             bpy.ops.object.select_all(action='DESELECT')
+
+            temperature = float(lines[-1])
+
+            bpy.data.materials["Llama"].node_tree.nodes["Emission.002"].inputs[0].default_value = temperature
 
         else:
             print("El bounding cylinder ya existe")

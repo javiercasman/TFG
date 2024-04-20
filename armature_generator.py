@@ -1,42 +1,49 @@
 import numpy as np
 from skimage.morphology import skeletonize
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, exposure
+from skimage.exposure import match_histograms
 from skimage.draw import line as sk_line
 from scipy.ndimage import binary_fill_holes as binary_fill_holes
 import cv2 as cv
 from plantcv import plantcv as pcv
 import math
 import bpy
+import colour
 import os
 
 def tab_writer(i,f):      # Ayuda a generar las tabulaciones en el fichero '.bvh'
     for k in range(i+1):
         f.write("\t")
 
-def generate_armature(write_armature_file, write_cylinder_config_file, flame_video_name, k, w, 
+def generate_armature(flame_video_name, k, w, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
     video_path = bpy.path.abspath("//") + flame_video_name
     if os.path.exists(video_path):
-        execute = write_armature_file or write_cylinder_config_file or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
+        bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
+        cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
+        flame_mh_path = directory + ("//") + "candle-flame-" + flame_name + ".jpg"
+        write_armature_file = not(os.path.exists(bvh_file_path))
+        write_config_file = not(os.path.exists(cfg_file_path))
+        generate_flame_mh = not(os.path.exists(flame_mh_path))
+        #execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
+        execute = True
         if execute:
             flame_name = flame_video_name.split('.')[0]
             directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
-            bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
-            cfg_file_path = directory + ("//") + "Cylinder_" + flame_name + ".cfg"
+
+            source = cv.imread(bpy.path.abspath("//") + "candle-flame.jpg")
             if not os.path.exists(directory):
                 os.makedirs(directory)
             frames = 0
             fps = 24
             length, width = 854, 480
-
             if write_armature_file:
                 f = open(bvh_file_path, "w")
                 f.write("HIERARCHY\nROOT Bone\n{\n")
-            if write_cylinder_config_file:
+            if write_config_file:
                 f1 = open(cfg_file_path, "w")
 
             base = [0]
-            cylinder_points = []
             video = cv.VideoCapture(video_path)
             while video.isOpened():
                 ret, frame = video.read()
@@ -46,7 +53,48 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                 frames += 1
 
                 resized_frame = cv.resize(frame, (length,width), interpolation=cv.INTER_LINEAR)     # Reescalado a 854x480
+                
                 gray_frame = cv.cvtColor(resized_frame, cv.COLOR_BGR2GRAY)
+
+                if(frames == 1):
+                    if(generate_flame_mh):
+                        source_eq = exposure.equalize_hist(resized_frame)
+                        cv.imshow('eq', source_eq)
+                        matched = match_histograms(source,resized_frame,channel_axis=-1)
+                        #cv.imshow('frame', resized_frame)
+                        #cv.imshow('source', source)
+                        #cv.imshow('matched', matched)
+                        cv.imwrite(flame_mh_path, matched)
+
+                    if(write_config_file):
+                        _, thresh = cv.threshold(gray_frame, 35, 255, cv.THRESH_BINARY) 
+                        contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+                        if contours:
+                            mascara = np.zeros_like(gray_frame)
+                            cv.drawContours(mascara, contours, -1, (255), thickness=cv.FILLED)
+                        _, thresh = cv.threshold(gray_frame, 235, 255, cv.THRESH_BINARY) #nos quedamos con los píxeles menores a 235
+                        contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                        mask = cv.bitwise_not(thresh)
+                        no_white = cv.bitwise_and(mascara, mascara, mask=mask)
+                        imagen_procesada = cv.bitwise_and(resized_frame, resized_frame, mask=no_white)
+
+                        pixels_no_black = cv.findNonZero(no_white)
+                        temperature = 0
+                        count = 0
+                        for pixel in pixels_no_black:
+                            x, y = pixel[0]
+                            b,g,r = imagen_procesada[y,x]
+                            rgb = np.array([r,g,b])
+                            xyz = colour.sRGB_to_XYZ(rgb / 255)
+                            xy = colour.XYZ_to_xy(xyz)
+                            cct = colour.xy_to_CCT(xy, 'hernandez1999')
+                            temperature += cct
+                            count += 1
+                        temperature /= count
+                    return False
+
+
                 ret, thresh = cv.threshold(gray_frame,110,255,cv.THRESH_BINARY)
 
                 skel = skeletonize(thresh)
@@ -155,8 +203,8 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                 if frames == 1:
                     for i in range(0, 12):
                         y = (first[1] - points_w[i][1]) * escala
-                        if write_cylinder_config_file: f1.write(str(y) + " ")
-                    if write_cylinder_config_file: f1.write("\n")
+                        if write_config_file: f1.write(str(y) + " ")
+                    if write_config_file: f1.write("\n")
 
                 for i in range(w+1):
                     if i < w: point1, point2 = points_w[i], points_w[i+1] 
@@ -176,7 +224,7 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                         y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
 
                     cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia izquierda
-                    if write_cylinder_config_file: 
+                    if write_config_file: 
                         l = math.dist(point1, [x_perpendicular, y_perpendicular]) * escala
                         f1.write(str(l) + " ")
 
@@ -191,10 +239,10 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                         y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
 
                     cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia derecha
-                    if write_cylinder_config_file: 
+                    if write_config_file: 
                         l = math.dist(point1, [x_perpendicular, y_perpendicular]) * escala
                         f1.write(str(l) + " ")
-                if write_cylinder_config_file: 
+                if write_config_file: 
                         f1.write("\n")    
                 
                 flame = gray_frame
@@ -202,7 +250,7 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                 cv.drawContours(flame, sk, -1, (0, 0, 255), 1)
 
                 if view_gray: cv.imshow('gray',gray_frame)
-                if view_binary: ('thresh',thresh)
+                if view_binary: cv.imshow('thresh',thresh)
                 if view_skel_raw: cv.imshow('Skeleton', skel_image)
                 if view_skel_treated: cv.imshow('branch', branch)
                 if view_convex_hull: cv.imshow('hull',thresh_ch)
@@ -213,7 +261,8 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
             video.release()
             cv.destroyAllWindows()
 
-            if write_cylinder_config_file:
+            if write_config_file:
+                f1.write(str(temperature))
                 f1.close()
             if write_armature_file:
                 f.close()
@@ -226,22 +275,6 @@ def generate_armature(write_armature_file, write_cylinder_config_file, flame_vid
                 f.close()
                 f = open(bvh_file_path, "w")
                 f.writelines(lines)
-            
 
     else:
         raise FileNotFoundError("No existe ningún vídeo llamado \"" + flame_video_name + "\"")
-
-# write_file = True                   # Depende de si queremos reescribir el .bvh o no.
-# division_points = []
-# flame_video_name = 'flame.mp4'      # Nombre del vídeo de referencia para el armature.
-# bones = 6                           # N bones del armature.
-# width_rings = 12                    # N anillos que tendrá el bounding cylinder.
-
-# view_gray = False                   # Activar para ver los frames de la llama en blanco y negro
-# view_binary = False                 # Activar para ver los frames de la llama aplicando el binary threshold
-# view_skel_raw = False               # Activar para ver el skeleton calculado con la imagen binarizado
-# view_skel_treated = False           # Activar para ver el skeleton después del proceso de tratamiento aplicado y las líneas perpendiculares calculadas
-# view_convex_hull = False            # Activar para ver los frames de la llama binarizada con convex hull aplicado
-# view_flame_skel = False             # Activar para ver la llama en blanco y negro con el skeleton tratado superpuesto en la imagen
-# generate_armature(write_file, division_points, flame_video_name, bones, width_rings - 1, view_gray, 
-#                   view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel)
