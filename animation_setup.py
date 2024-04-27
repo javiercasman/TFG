@@ -17,7 +17,7 @@ def view3d_find( return_area = False ):
                     return region, rv3d, v3d
     return None, None
 
-def animation_setup(flame_video_name):
+def animation_setup(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
     directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name
     if not os.path.exists(directory):
@@ -26,16 +26,16 @@ def animation_setup(flame_video_name):
     if not os.path.exists(cfg_file_path):
         raise FileNotFoundError("No existe ningun archivo de configuracion llamado \"" + "Config_" + flame_name + ".cfg" + "\".\n")
     
-    armature_name = "Armature_" + flame_name
+    armature_name = "Armature_" + collection_name
     if armature_name in bpy.context.scene.objects.keys():
         armature = bpy.data.objects[armature_name]
-        bound_name = "Cylinder_" + flame_name
+        bound_name = "Cylinder_" + collection_name
         if bound_name not in bpy.context.scene.objects.keys():
             if bpy.context.mode != 'OBJECT': bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
             
             offset = (armature.matrix_world @ armature.data.bones[0].head).z
-            llama = bpy.data.objects["Llama"]
+            llama = bpy.data.objects["Llama_" + collection_name]
             
             altura_cilindro = llama.dimensions.z + 0.01
             radio_cilindro = max(llama.dimensions.x, llama.dimensions.y) / 2 + 0.05
@@ -95,7 +95,7 @@ def animation_setup(flame_video_name):
                 edge.select = False
             for vertex in cilindro.data.vertices:
                 vertex.select = False
-            bpy.ops. object.mode_set(mode='EDIT')
+            bpy.ops.object.mode_set(mode='EDIT')
 
             bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
             
@@ -242,7 +242,7 @@ def animation_setup(flame_video_name):
                     bpy.ops.mesh.reveal(select=False) #para revelar
                     
                     bpy.ops.object.mode_set(mode='OBJECT')
-            
+
             # Bindear cilindro y armature
             bpy.ops.object.mode_set(mode='OBJECT') 
             bpy.context.scene.frame_set(0)
@@ -263,11 +263,12 @@ def animation_setup(flame_video_name):
             bpy.ops.object.select_all(action='DESELECT')
 
             temperature = float(lines[-1])
-            bpy.data.materials["Llama"].node_tree.nodes["Blackbody"].inputs[0].default_value = temperature
-            bpy.data.images['candle-flame.jpg'].filepath = directory + ("//") + "candle-flame_" + flame_name + ".jpg" #CAMBIABLE?
+            llama.active_material.node_tree.nodes["Blackbody"].inputs[0].default_value = temperature
+            im = bpy.data.images.load(directory + ("//") + "candle-flame_" + flame_name + ".jpg")
+            llama.active_material.node_tree.nodes["Image Texture"].image = im
+            #bpy.data.images['candle-flame.jpg'].filepath = directory + ("//") + "candle-flame_" + flame_name + ".jpg" #CAMBIABLE?
             cilindro.hide_set(True)
             cilindro.hide_render = True
-
         else:
             print("El bounding cylinder ya existe")
     else:

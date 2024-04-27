@@ -25,7 +25,7 @@ class SpawnCubeOperator(Operator):
         # Calcular la posición del cubo enfrente de la cámara
         cube_distance = 1.0  # Distancia desde la cámara
         cube_scale = 0.1  # Escala del cubo
-        cube_position = camera_location + rcube_distance * camera_rotation @ mathutils.Vector((0, 0, 1))
+        cube_position = camera_location + cube_distance * camera_rotation @ mathutils.Vector((0, 0, 1))
 
         # Crear un cubo
         bpy.ops.mesh.primitive_cube_add(location=cube_position, scale=(cube_scale, cube_scale, cube_scale))
