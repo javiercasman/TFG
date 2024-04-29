@@ -19,17 +19,18 @@ def resize_aspect_ratio(image, new_width):
     width = image.shape[1]
     w_diff = new_width - width
     border = w_diff // 2
-    print(border)
     bordered_image = cv.copyMakeBorder(image, 0, 0, border, border, cv.BORDER_CONSTANT, value=(0,0,0))
     return bordered_image, border
 
 
 def generate_armature(flame_video_name, k, w, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
-    video_path = bpy.path.abspath("//") + flame_video_name
+    dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
+    dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
+    video_path = dir + ("\\") + flame_video_name
     if os.path.exists(video_path):
         flame_name = flame_video_name.split('.')[0]
-        directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
+        directory =  dir + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
         bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
         cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
         flame_mh_path = directory + ("//") + "candle-flame_" + flame_name + ".jpg"
@@ -64,7 +65,7 @@ def generate_armature(flame_video_name, k, w,
 
                 if(frames == 1):
                     if(generate_flame_mh):
-                        source = cv.imread(bpy.path.abspath("//") + "candle-flame.jpg")
+                        source = cv.imread(dir + ("//") + "candle-flame.jpg")
                         source, border = resize_aspect_ratio(source, width)
                         matched = match_histograms(source,resized_frame,channel_axis=-1)
                         cropped_matched = matched[::,border:-border]

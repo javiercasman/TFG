@@ -19,7 +19,9 @@ def view3d_find( return_area = False ):
 
 def animation_setup(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
-    directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name
+    dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
+    dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
+    directory =  dir + ("//") + "flames" + ("//") + flame_name
     if not os.path.exists(directory):
         raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".\n")
     cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
@@ -51,6 +53,7 @@ def animation_setup(flame_video_name, collection_name):
             bpy.ops.object.select_all(action='DESELECT')
             bpy.context.view_layer.objects.active = cilindro
             bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
             bpy.context.view_layer.update()
             with open(cfg_file_path) as f:
                 lines = f.readlines()            
@@ -145,8 +148,7 @@ def animation_setup(flame_video_name, collection_name):
                         bpy.ops.object.mode_set(mode='OBJECT')
                         for vert in verts_frame:
                             cilindro.data.vertices[vert].select = True #Solo funciona en object mode
-                        bpy.ops.object.mode_set(mode='EDIT')
-                        
+                        bpy.ops.object.mode_set(mode='EDIT')                       
                         
                         bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=False, proportional_edit_falloff='SMOOTH', proportional_size=0.8, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
                         bpy.ops.object.mode_set(mode='OBJECT')

@@ -3,7 +3,9 @@ import os
 
 def import_armature(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
-    directory =  bpy.path.abspath("//") + "flames" + ("//") + flame_name
+    dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
+    dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
+    directory =  dir + ("//") + "flames" + ("//") + flame_name
     if not os.path.exists(directory):
         raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".")
     bvh_name = "Armature_" + flame_name
@@ -34,6 +36,10 @@ def import_armature(flame_video_name, collection_name):
 
         bpy.ops.object.parent_set()
 
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.ops.object.delete()
+        bpy.ops.object.select_all(action='DESELECT')
         #bpy.ops.object.parent_set(type='ARMATURE_AUTO')     # Quitar esto, no queremos que la llama esté bindeada con el armature, queremos que esté bindeada con mesh deform al cilindro, eso se hace en cylindre_generator
        # armature.parent = llama
     #    armature.hide_viewport = True
