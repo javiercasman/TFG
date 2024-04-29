@@ -156,7 +156,7 @@ class CANDLE_OT_dialog_box(Operator):
         if scene_col is None:
             #No existe en la escena, por lo tanto tendremos que importarlo
             new_col_name = add_candle(self,context,col_name) #añadirá la colección con nombre = new_col_name
-            generate_armature(video_name, self.n_bones, self.n_rings - 1, self.view_gray, self.view_binary, 
+            generate_armature(video_name, self.n_bones, self.n_rings, self.view_gray, self.view_binary, 
                               self.view_skel_raw, self.view_skel_treated, self.view_convex_hull, self.view_flame_skel)
             import_armature(video_name, new_col_name)
             animation_setup(video_name, new_col_name)
@@ -172,7 +172,7 @@ class CANDLE_OT_dialog_box(Operator):
             #Pero tambien tenemos que ver si queremos enseñar los frames
             # Hay que ocultar el cilindro y no se que mas
             if self.view_gray or self.view_binary or self.view_skel_raw or self.view_skel_treated or self.view_convex_hull or self.view_flame_skel:
-                    generate_armature(video_name, self.n_bones, self.n_rings - 1, self.view_gray, self.view_binary, 
+                    generate_armature(video_name, self.n_bones, self.n_rings, self.view_gray, self.view_binary, 
                                       self.view_skel_raw, self.view_skel_treated, self.view_convex_hull, self.view_flame_skel)
 
         return {'FINISHED'}

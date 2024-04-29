@@ -12,7 +12,7 @@ import colour
 import os
 
 def tab_writer(i,f):      # Ayuda a generar las tabulaciones en el fichero '.bvh'
-    for k in range(i+1):
+    for _ in range(i+1):
         f.write("\t")
 
 def resize_aspect_ratio(image, new_width):
@@ -23,14 +23,15 @@ def resize_aspect_ratio(image, new_width):
     return bordered_image, border
 
 
-def generate_armature(flame_video_name, k, w, 
+def generate_armature(flame_video_name, n_bones, n_rings, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
     dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
     dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
     video_path = dir + ("\\") + flame_video_name
     if os.path.exists(video_path):
         flame_name = flame_video_name.split('.')[0]
-        directory =  dir + "flames" + ("//") + flame_name          # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
+        n_bones_n_rings = str(n_bones) + "_" + str(n_rings)
+        directory =  dir + "flames" + ("//") + flame_name + ("//") + n_bones_n_rings       # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
         bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
         cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
         flame_mh_path = directory + ("//") + "candle-flame_" + flame_name + ".jpg"
@@ -39,6 +40,7 @@ def generate_armature(flame_video_name, k, w,
         generate_flame_mh = not(os.path.exists(flame_mh_path))
         execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
         if execute:
+            n_rings -= 1 # Para no tener que cambiar todo el código
             if not os.path.exists(directory):
                 os.makedirs(directory)
             frames = 0
@@ -134,10 +136,10 @@ def generate_armature(flame_video_name, k, w,
                 n_pixels = len(longest_segment)
                 last, first = np.flip(longest_segment[0][0]), np.flip(longest_segment[-1][0])
                 segment_length = first[0] - last[0]
-                step = int(n_pixels/k)
+                step = int(n_pixels/n_bones)
                 points = []        # Guardaremos los puntos para los huesos
-                for i in range(1,k):
-                    points.insert(0,np.flip(longest_segment[step*i][0]))        # Dividimos el segmento en k+1 partes
+                for i in range(1,n_bones):
+                    points.insert(0,np.flip(longest_segment[step*i][0]))        # Dividimos el segmento en n_bones+1 partes
                 points.append(last)
                 points.insert(0,first)
 
@@ -145,7 +147,7 @@ def generate_armature(flame_video_name, k, w,
                 if write_armature_file:
                     if frames == 1:        # En el primer frame calculamos los offsets
                         last_point_x, last_point_z = first[0], first[1]
-                        for i in range(k+1):
+                        for i in range(n_bones+1):
                             point = points[i]
                             offset_z, offset_x = (last_point_x - point[0]) * escala, (last_point_z - point[1]) * escala
                             tab_writer(i,f)
@@ -158,7 +160,7 @@ def generate_armature(flame_video_name, k, w,
                                     f.write("CHANNELS 3 Xrotation Yrotation Zrotation\n")
                                 
                                 tab_writer(i,f)
-                                if i == k-1:
+                                if i == n_bones-1:
                                     f.write("End Site\n")
                                 else:
                                     f.write("JOINT Bone.00{}".format(i+1) + "\n")
@@ -168,7 +170,7 @@ def generate_armature(flame_video_name, k, w,
 
                                 last_point_x, last_point_z = point[0], point[1]
                             else:
-                                for j in range(1,k+2):
+                                for j in range(1,n_bones+2):
                                     tab_writer(i-j,f)
                                     f.write("}\n")
                         f.write("MOTION\n")
@@ -176,7 +178,7 @@ def generate_armature(flame_video_name, k, w,
                         f.write("Frame Time: {:.6f}\n".format(1/fps))
 
                     f.write("{:.6f} ".format(0) + "{:.6f} ".format(0) + "{:.6f} ".format(0))        # XYZposition del primer hueso, en nuestro caso será 0 siempre ya que la base no se mueve
-                    for i in range(k):
+                    for i in range(n_bones):
                         point1, point2 = points[i], points[i+1]
                         delta_x, delta_y = point1[0] - point2[0], point1[1] - point2[1]
                         rads = np.arctan2(delta_y, delta_x)
@@ -194,11 +196,11 @@ def generate_armature(flame_video_name, k, w,
                 thresh_ch = np.zeros_like(thresh)
                 cv.drawContours(thresh_ch, [convex_hull], 0, 255, -1)
 
-                # Puntos para calcular la anchura (w)
+                # Puntos para calcular la anchura (n_rings)
                 last, first = longest_segment[0][0], longest_segment[-1][0]
-                step = int(n_pixels/w)
+                step = int(n_pixels/n_rings)
                 points_w = []       # Esto es lo que necesita cilindro.py
-                for i in range(1,w):
+                for i in range(1,n_rings):
                     points_w.insert(0,longest_segment[step*i][0])
                 points_w.append(last)
                 points_w.insert(0,first)
@@ -209,8 +211,8 @@ def generate_armature(flame_video_name, k, w,
                         if write_config_file: f1.write(str(y) + " ")
                     if write_config_file: f1.write("\n")
 
-                for i in range(w+1):
-                    if i < w: point1, point2 = points_w[i], points_w[i+1] 
+                for i in range(n_rings+1):
+                    if i < n_rings: point1, point2 = points_w[i], points_w[i+1] 
                     else: point1, point2 = points_w[i], points_w[i-1]
                     m = (point2[1] - point1[1]) / (point2[0] - point1[0])
                     m_perpendicular = -1 / m if m != 0 else np.inf
