@@ -100,6 +100,8 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                             count += 1
                         temperature /= count
 
+                ## SKELETONIZE ##
+
                 ret, thresh = cv.threshold(gray_frame,110,255,cv.THRESH_BINARY)
 
                 skel = skeletonize(thresh)
@@ -190,6 +192,9 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         last_degrees = degrees         # Para calcular los grados necesitamos la referencia del anterior punto
                     f.write("\n")
 
+                ################
+                ## CILINDRO ##
+
                 contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
                 max_contour = max(contours, key=cv.contourArea)
                 convex_hull = cv.convexHull(max_contour)
@@ -250,6 +255,8 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 if write_config_file: 
                         f1.write("\n")    
                 
+                ############
+
                 flame = gray_frame
                 sk, _ = cv.findContours(branch, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
                 cv.drawContours(flame, sk, -1, (0, 0, 255), 1)
