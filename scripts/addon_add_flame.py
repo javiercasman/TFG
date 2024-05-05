@@ -136,7 +136,6 @@ class CANDLE_OT_dialog_box(Operator):
     view_binary: BoolProperty(name = "View thresholded frames", default = False, description = "Check to display thresholded video frames")
     view_skel_raw: BoolProperty(name = "View unprocessed skeleton", default = False, description = "Check to display video frames with unprocessed skeleton")
     view_skel_treated: BoolProperty(name = "View processed skeleton", default = False, description = "Check to display video frames with processed skeleton + width lines")
-    view_convex_hull: BoolProperty(name = "View binarized flame", default = False, description = "Check to display binarized flame + convex hull video frames")
     view_flame_skel: BoolProperty(name = "View gray frame + skeleton", default = False, description = "Check to display black and white video frames with treated skeleton overlaid")
 
     
@@ -165,7 +164,7 @@ class CANDLE_OT_dialog_box(Operator):
             #No existe en la escena, por lo tanto tendremos que importarlo
             new_col_name = add_candle(self,context,col_name) #añadirá la colección con nombre = new_col_name
             generate_armature(video_name, self.n_bones, self.n_rings, self.view_gray, self.view_binary, 
-                              self.view_skel_raw, self.view_skel_treated, self.view_convex_hull, self.view_flame_skel)
+                              self.view_skel_raw, self.view_skel_treated, self.view_flame_skel)
             import_armature(video_name, new_col_name)
             animation_setup(video_name, new_col_name)
             transform_flame(self,context,new_col_name)
@@ -179,9 +178,9 @@ class CANDLE_OT_dialog_box(Operator):
             duplicate_collection(self,context,col_name)
             #Pero tambien tenemos que ver si queremos enseñar los frames
             # Hay que ocultar el cilindro y no se que mas
-            if self.view_gray or self.view_binary or self.view_skel_raw or self.view_skel_treated or self.view_convex_hull or self.view_flame_skel:
+            if self.view_gray or self.view_binary or self.view_skel_raw or self.view_skel_treated or self.view_flame_skel:
                     generate_armature(video_name, self.n_bones, self.n_rings, self.view_gray, self.view_binary, 
-                                      self.view_skel_raw, self.view_skel_treated, self.view_convex_hull, self.view_flame_skel)
+                                      self.view_skel_raw, self.view_skel_treated, self.view_flame_skel)
 
         return {'FINISHED'}
         

@@ -24,7 +24,7 @@ def resize_aspect_ratio(image, new_width):
 
 
 def generate_armature(flame_video_name, n_bones, n_rings, 
-                      view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
+                      view_gray, view_binary, view_skel_raw, view_skel_treated, view_flame_skel):
     dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
     #dir = (os.path.abspath(os.path.join(os.getcwd(), os.pardir))) #//TFG
     dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
@@ -39,7 +39,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
         write_armature_file = not(os.path.exists(bvh_file_path))
         write_config_file = not(os.path.exists(cfg_file_path))
         generate_flame_mh = not(os.path.exists(flame_mh_path))
-        execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_convex_hull or view_flame_skel
+        execute = write_armature_file or write_config_file or generate_flame_mh or view_gray or view_binary or view_skel_raw or view_skel_treated or view_flame_skel
         if execute:
             n_rings -= 1 # Para no tener que cambiar todo el código
             if not os.path.exists(directory):
@@ -104,23 +104,40 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 ## SKELETONIZE ##
 
                 ret, thresh = cv.threshold(gray_frame,100,255,cv.THRESH_BINARY)
+                
+                contours, _ = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+                max_contour = max(contours, key=cv.contourArea)
+                convex_hull = cv.convexHull(max_contour)
+                cv.drawContours(thresh, [convex_hull], 0, 255, -1)
 
                 skel = skeletonize(thresh)
                 skel_image = img_as_ubyte(skel)
-                pruned_skeleton, _, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto               
 
-                corners = cv.cornerHarris(pruned_skeleton,2,27,0.02)        # Detección de las esquinas de la(s) pata(s) inferior(es)
-                corners = cv.dilate(corners, None)        # Dilatación de las esquinas detectadas para facilitar su eliminación
+                corners = cv.cornerHarris(skel_image,30,27,0.015)        # Detección de las esquinas de la(s) pata(s) inferior(es)
+                #32 27 0.02
+                #corners = cv.dilate(corners, None)        # Dilatación de las esquinas detectadas para facilitar su eliminación
 
-                pruned_skeleton[corners>0.01*corners.max()] = 0        # Esquinas del esqueleto pintadas de negro, patas separadas
+                pruned_skeleton = skel_image.copy()
+                pruned_skeleton[corners>0.01*corners.max()] = 0
 
                 _, segment_objects = pcv.morphology.segment_skeleton(skel_img=pruned_skeleton)      # Dividimos el esqueleto en segmentos una vez separadas las patas
-                #longest_segment = max(segment_objects, key=len)        # Cogemos el segmento más largo, es decir, el vertical, del cual generaremos los huesos #CAMBIAR POR EL SEGMENTO QUE ESTÁ MÁS ARRIBA
+
+                # pruned_skeleton, _, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto               
+
+#                if frames == 90:
+#                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_pruned.png", pruned_skeleton)
+
+
+
+                # pruned_skeleton[corners>0.01*corners.max()] = 0        # Esquinas del esqueleto pintadas de negro, patas separadas
+
+                # borrar, segment_objects = pcv.morphology.segment_skeleton(skel_img=pruned_skeleton)      # Dividimos el esqueleto en segmentos una vez separadas las patas
+                # #longest_segment = max(segment_objects, key=len)        # Cogemos el segmento más largo, es decir, el vertical, del cual generaremos los huesos #CAMBIAR POR EL SEGMENTO QUE ESTÁ MÁS ARRIBA
                 longest_segment = min(segment_objects, key=lambda x: np.min(x[0][0][1])) # Cogemos el segmento más arriba
 
                 N = (len(longest_segment) / 2) + 1
                 longest_segment = longest_segment[:int(N)]        # Por algún motivo, el segmento devuelto por la función tiene la forma [x0y0, x1y1, ..., xn-1yn-1, xnyn, xn-1yn-1, xn-2yn-2, ..., x1y1], con esto cogemos directamente la mitad de la lista, es decir 
-                                                                # el segmento entero sin píxeles duplicados
+                #                                                 # el segmento entero sin píxeles duplicados
                 
                 branch = np.zeros_like(pruned_skeleton)        # Nueva imagen negra del mismo tamaño que el esqueleto tratado, donde 'pintaremos' la rama deseada
                 for [pixel] in longest_segment:
@@ -128,8 +145,10 @@ def generate_armature(flame_video_name, n_bones, n_rings,
 
                 if not all(base):       # Generar punto base, se hará en el primer frame
                     base = np.flip(longest_segment[-1][0].copy())
-                    while thresh[base[0]][base[1]] > 0:
-                        base[0] += 1
+                    count = 0
+                    while thresh[count+base[0]][base[1]] > 0:
+                        count += 1
+                    base[0] += int(count/2)
 
                 rows, cols = sk_line(longest_segment[-1][0][1], longest_segment[-1][0][0], base[0], base[1])
                 branch[rows,cols] = 255
@@ -199,12 +218,6 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 ##############
                 ## CILINDRO ##
 
-                contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-                max_contour = max(contours, key=cv.contourArea)
-                convex_hull = cv.convexHull(max_contour)
-                thresh_ch = np.zeros_like(thresh)
-                cv.drawContours(thresh_ch, [convex_hull], 0, 255, -1)
-
                 # Puntos para calcular la anchura (n_rings)
                 last, first = longest_segment[0][0], longest_segment[-1][0]
                 step = int(n_pixels/n_rings)
@@ -212,7 +225,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 for i in range(1,n_rings):
                     points_w.insert(0,longest_segment[step*i][0])
                 points_w.append(last)
-                points_w.insert(0,first)
+                points_w.insert(0,first) # Como hemos hecho convex hull, nos lo cargamos
                 
                 if frames == 1:
                     for i in range(0, 12):
@@ -236,14 +249,14 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         y_perpendicular = y1 + 1
                     while True:
                         if m!= 0:
-                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or (int(x_perpendicular) >= np.size(thresh_ch,1)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                            if (int(y_perpendicular) >= np.size(thresh,0)) or (int(x_perpendicular) >= np.size(thresh,1)) or thresh[int(y_perpendicular), int(x_perpendicular)] == 0:
                                 x_perpendicular += 1
                                 y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
                                 break
                             x_perpendicular -= 1
                             y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
                         else:
-                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                            if (int(y_perpendicular) >= np.size(thresh,0)) or thresh[int(y_perpendicular), int(x_perpendicular)] == 0:
                                 y_perpendicular -= 1
                                 break
                             y_perpendicular += 1
@@ -260,14 +273,14 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         y_perpendicular = y1 - 1
                     while True:
                         if m!= 0:
-                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or (int(x_perpendicular) >= np.size(thresh_ch,1)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                            if (int(y_perpendicular) >= np.size(thresh,0)) or (int(x_perpendicular) >= np.size(thresh,1)) or thresh[int(y_perpendicular), int(x_perpendicular)] == 0:
                                 x_perpendicular -= 1
                                 y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
                                 break
                             x_perpendicular += 1
                             y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
                         else:
-                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                            if (int(y_perpendicular) >= np.size(thresh,0)) or thresh[int(y_perpendicular), int(x_perpendicular)] == 0:
                                 y_perpendicular += 1
                                 break
                             y_perpendicular -= 1
@@ -290,24 +303,29 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 ##########
                 #cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", test)
                 #cv.imshow('test',test)
-                if frames == 86:
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86.png", frame)
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86_gray.png", flame)
-                elif frames == 50:
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\50.png", frame)
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\50_gray.png", flame)
-                elif frames == 90:
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
-                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
+                # if frames == 86:
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\86.png", frame)
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\86_gray.png", flame)
+                # elif frames == 50:
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\50.png", frame)
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\50_gray.png", flame)
+                # if frames == 90:
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_corner.png", pruned_skeleton)
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_skel.png", skel_image)
+                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
+                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
+                if frames == 1:
+                    cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\flame_skel.png", flame)
+                    cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", branch)
+                
                 ##########
 
                 if view_gray: cv.imshow('gray',gray_frame)
                 if view_binary: cv.imshow('thresh',thresh)
                 if view_skel_raw: cv.imshow('Skeleton', skel_image)
                 if view_skel_treated: cv.imshow('branch', branch)
-                if view_convex_hull: cv.imshow('hull',thresh_ch)
                 if view_flame_skel: cv.imshow('flame_skel',flame)
-                if cv.waitKey(1) & 0xFF == ord('q'):
+                if cv.waitKey(5) & 0xFF == ord('q'):
                     break
 
             video.release()
