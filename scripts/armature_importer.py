@@ -5,7 +5,8 @@ def import_armature(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
     dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
     dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
-    directory =  dir + ("//") + "flames" + ("//") + flame_name
+    _, r, w = collection_name.split('_')
+    directory =  dir + ("//") + "flames" + ("//") + flame_name + ("//") + r + ("_") + w
     if not os.path.exists(directory):
         raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".")
     bvh_name = "Armature_" + flame_name

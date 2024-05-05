@@ -21,7 +21,8 @@ def animation_setup(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
     dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
     dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
-    directory =  dir + ("//") + "flames" + ("//") + flame_name
+    _, r, w = collection_name.split('_')
+    directory =  dir + ("//") + "flames" + ("//") + flame_name + ("//") + r + ("_") + w
     if not os.path.exists(directory):
         raise FileNotFoundError("No existen los archivos procesados del video \"" + flame_name +"\".\n")
     cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
@@ -35,10 +36,8 @@ def animation_setup(flame_video_name, collection_name):
         if bound_name not in bpy.context.scene.objects.keys():
             if bpy.context.mode != 'OBJECT': bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
-            
-            offset = (armature.matrix_world @ armature.data.bones[0].head).z
+        
             llama = bpy.data.objects["Llama_" + collection_name]
-            
             altura_cilindro = llama.dimensions.z + 0.01
             radio_cilindro = max(llama.dimensions.x, llama.dimensions.y) / 2 + 0.05
             
@@ -55,6 +54,8 @@ def animation_setup(flame_video_name, collection_name):
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
             bpy.context.view_layer.update()
+
+            offset = (armature.matrix_world @ armature.data.bones[0].head).z
             with open(cfg_file_path) as f:
                 lines = f.readlines()            
             division_points = [float(x) for x in lines[0].split()]
@@ -93,19 +94,25 @@ def animation_setup(flame_video_name, collection_name):
                     bpy.ops.object.mode_set(mode='EDIT') 
 
             #seleccionar edges y verts
-            bpy.ops.object.mode_set(mode='OBJECT') 
-            for edge in cilindro.data.edges:
-                edge.select = False
-            for vertex in cilindro.data.vertices:
-                vertex.select = False
-            bpy.ops.object.mode_set(mode='EDIT')
+            #bpy.ops.object.mode_set(mode='OBJECT') 
+            #for edge in cilindro.data.edges:
+            #    edge.select = False
+            #for vertex in cilindro.data.vertices:
+            #    vertex.select = False
+            #bpy.ops.object.mode_set(mode='EDIT')
 
             bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
             
             initial_vertex_locations = [v.co.copy() for v in cilindro.data.vertices]
             cilindro.select_set(True)#innecesario?
             bpy.ops.object.mode_set(mode='OBJECT') 
-            for frame in range(len(lines)-2):   #el numero de frames
+
+            n_frames = len(lines)-2
+
+            if bpy.context.scene.frame_end < n_frames:
+                bpy.context.scene.frame_end = n_frames
+
+            for frame in range(n_frames):
                 width_frame = []
                 bpy.context.scene.frame_set(frame)
                 bpy.context.scene.animall_properties.key_point_location = True
@@ -128,25 +135,20 @@ def animation_setup(flame_video_name, collection_name):
                 for idx, x in enumerate(width_frame):
                     w_left = x[0]
                     w_right = x[1]
-                    #edges_frame = edges[idx]
-                    verts_frame = verts[idx]
-                    #edges_frame_left = edges_frame[:16]
-                    verts_frame_left = verts_frame[:16]
-                    #edges_frame_right = edges_frame[16:]
-                    verts_frame_right = verts_frame[16:]
+                    verts_loopcut = verts[idx]
 
-                    for vert in verts_frame:
+                    for vert in verts_loopcut:
                         cilindro.data.vertices[vert].select = True
                     bpy.ops.object.mode_set(mode='EDIT')
                     bpy.ops.mesh.hide(unselected=True)
                     bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
 
                     if w_left > w_right:
-                        new_radio = radio_cilindro + w_left
-                        resize_scale = new_radio / radio_cilindro
+                        left_radio = radio_cilindro + w_left
+                        resize_scale = left_radio / radio_cilindro
                         
                         bpy.ops.object.mode_set(mode='OBJECT')
-                        for vert in verts_frame:
+                        for vert in verts_loopcut:
                             cilindro.data.vertices[vert].select = True #Solo funciona en object mode
                         bpy.ops.object.mode_set(mode='EDIT')                       
                         
@@ -155,38 +157,57 @@ def animation_setup(flame_video_name, collection_name):
                         bpy.ops.object.mode_set(mode='EDIT')
                         
                         bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
-                        median_point = Vector()
+
                         bpy.ops.object.mode_set(mode='OBJECT')
-                        for vert in verts_frame_right:
-                            cilindro.data.vertices[vert].select = True
-                            median_point += cilindro.matrix_world @ cilindro.data.vertices[vert].co
-                            
-                        cilindro.data.vertices[verts_frame_left[0]].select = True #ahora es una medialuna, mas facil
-                        median_point += cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_left[0]].co
-                        median_point /= (len(verts_frame_right) + 1)
-                        
-                        left_extreme = cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_left[8]].co
-                        prop_size = (median_point - left_extreme).length
-                        
-                        right_extreme = cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_right[8]].co
-                        dist_ref = (median_point - right_extreme).length #es 1
-                        
-                        right_radio = radio_cilindro + w_right
-                        
-                        diff = new_radio - right_radio
-                        dist = dist_ref - diff
-                        resize_scale = dist/dist_ref
-                        
+
+                        left_extr_vert = cilindro.data.vertices[verts_loopcut[8]]
+                        right_extr_vert = cilindro.data.vertices[verts_loopcut[24]]
+
+                        right_co = cilindro.matrix_world @ right_extr_vert.co
+                        left_co = cilindro.matrix_world @ left_extr_vert.co
+
+                        prop_size = (right_co - left_co).length
+
+                        move_dist = w_left - w_right
+
+                        right_extr_vert.select = True
+
                         bpy.ops.object.mode_set(mode='EDIT')
+                        bpy.ops.transform.translate(value=(move_dist, 0, 0), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', constraint_axis=(True, False, False), mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
+
+                        # median_point = Vector()
+                        # bpy.ops.object.mode_set(mode='OBJECT')
+                        # for vert in verts_loopcut_right:
+                        #     cilindro.data.vertices[vert].select = True
+                        #     median_point += cilindro.matrix_world @ cilindro.data.vertices[vert].co
+                            
+                        # cilindro.data.vertices[verts_loopcut_left[0]].select = True #ahora es una medialuna, mas facil
+                        # median_point += cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_left[0]].co
+                        # median_point /= (len(verts_loopcut_right) + 1)
                         
-                        bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)                      
+                        # left_extreme_vertice = cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_left[8]].co
+                        # prop_size = (median_point - left_extreme_vertice).length
+                        
+                        # right_extreme_vertice = cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_right[8]].co
+                        # semicirc_radio = (median_point - right_extreme_vertice).length #es 1
+                        
+                        # right_radio = radio_cilindro + w_right
+                        
+                        # radio_diff = left_radio - right_radio
+                        # resize_value = semicirc_radio - radio_diff
+                        # resize_scale = resize_value/semicirc_radio
+                        # if frame == 124 or frame == 89 or frame == 90 or frame == 146: print("escala:",resize_scale)
+                        
+                        # bpy.ops.object.mode_set(mode='EDIT')
+                        
+                        # bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)                      
 
                     elif w_left < w_right:
-                        new_radio = radio_cilindro + w_right
-                        resize_scale = new_radio / radio_cilindro
+                        right_radio = radio_cilindro + w_right
+                        resize_scale = right_radio / radio_cilindro
                         
                         bpy.ops.object.mode_set(mode='OBJECT')
-                        for vert in verts_frame:
+                        for vert in verts_loopcut:
                             cilindro.data.vertices[vert].select = True #Solo funciona en object mode
 
                         bpy.ops.object.mode_set(mode='EDIT')
@@ -197,46 +218,66 @@ def animation_setup(flame_video_name, collection_name):
                         bpy.ops.object.mode_set(mode='EDIT')
 
                         bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
-                        median_point = Vector()
+
                         bpy.ops.object.mode_set(mode='OBJECT')
-                        for vert in verts_frame_left:
-                            cilindro.data.vertices[vert].select = True
-                            median_point += cilindro.matrix_world @ cilindro.data.vertices[vert].co
-                            
-                        cilindro.data.vertices[verts_frame_right[0]].select = True #ahora es una medialuna, mas facil
-                        median_point += cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_right[0]].co
-                        median_point /= (len(verts_frame_left) + 1)
-                        
-                        right_extreme = cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_right[8]].co
-                        prop_size = (median_point - right_extreme).length
-                        
-                        left_extreme = cilindro.matrix_world  @ cilindro.data.vertices[verts_frame_left[8]].co
-                        dist_ref = (median_point - left_extreme).length #es 1
-                        
-                        left_radio = radio_cilindro + w_left
-                        
-                        diff = new_radio - left_radio
-                        dist = dist_ref - diff
-                        resize_scale = dist/dist_ref
-                        
+
+                        left_extr_vert = cilindro.data.vertices[verts_loopcut[8]]
+                        right_extr_vert = cilindro.data.vertices[verts_loopcut[24]]
+
+                        right_co = cilindro.matrix_world @ right_extr_vert.co
+                        left_co = cilindro.matrix_world @ left_extr_vert.co
+
+                        prop_size = (left_co - right_co).length
+
+                        move_dist = w_left - w_right
+
+                        left_extr_vert.select = True
+
                         bpy.ops.object.mode_set(mode='EDIT')
-                        bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
+                        bpy.ops.transform.translate(value=(move_dist, 0, 0), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', constraint_axis=(True, False, False), mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
+
+                    #     median_point = Vector()
+                    #     bpy.ops.object.mode_set(mode='OBJECT')
+                    #     for vert in verts_loopcut_left:
+                    #         cilindro.data.vertices[vert].select = True
+                    #         median_point += cilindro.matrix_world @ cilindro.data.vertices[vert].co
+                            
+                    #     cilindro.data.vertices[verts_loopcut_right[0]].select = True #ahora es una medialuna, mas facil
+                    #     median_point += cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_right[0]].co
+                    #     median_point /= (len(verts_loopcut_left) + 1)
+                        
+                    #     right_extreme_vertice = cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_right[8]].co
+                    #     prop_size = (median_point - right_extreme_vertice).length
+                        
+                    #     left_extreme_vertice = cilindro.matrix_world  @ cilindro.data.vertices[verts_loopcut_left[8]].co
+                    #     semicirc_radio = (median_point - left_extreme_vertice).length #es 1
+                        
+                    #     left_radio = radio_cilindro + w_left
+                        
+                    #     radio_diff = right_radio - left_radio
+                    #     resize_value = semicirc_radio - radio_diff
+                    #     resize_scale = resize_value/semicirc_radio
+                    #     if frame == 124 or frame == 89 or frame == 90 or frame == 146: print("escala:",resize_scale)
+                        
+                    #     bpy.ops.object.mode_set(mode='EDIT')
+                    #     bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=True, proportional_edit_falloff='SMOOTH', proportional_size=prop_size, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
 
                     else: #es probable q sean iguales, asi q sera un scale simple
                         new_radio = radio_cilindro + w_right
                         resize_scale = new_radio / radio_cilindro
                         
                         bpy.ops.object.mode_set(mode='OBJECT')
-                        for vert in verts_frame:
+                        for vert in verts_loopcut:
                             cilindro.data.vertices[vert].select = True
                             
                         bpy.ops.object.mode_set(mode='EDIT')
                         bpy.ops.transform.resize(value=(resize_scale, resize_scale, 1), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', mirror=True, use_proportional_edit=False, proportional_edit_falloff='SMOOTH', proportional_size=0.8, use_proportional_connected=False, use_proportional_projected=False, snap=False, snap_elements={'INCREMENT'}, use_snap_project=False, snap_target='CLOSEST', use_snap_self=True, use_snap_edit=True, use_snap_nonedit=True, use_snap_selectable=False)
                     
-                    bpy.ops.object.mode_set(mode='OBJECT')
-                    for vert in verts_frame: 
-                        cilindro.data.vertices[vert].select = True #Solo funciona en object mode
-                    bpy.ops.anim.insert_keyframe_animall()
+                    #bpy.ops.object.mode_set(mode='OBJECT')
+                    #for vert in verts_loopcut: 
+                    #    cilindro.data.vertices[vert].select = True #Solo funciona en object mode
+                    # bpy.context.view_layer.objects.active = cilindro
+                    # bpy.ops.anim.insert_keyframe_animall()
                     
                     bpy.ops.object.mode_set(mode='EDIT')
                     bpy.ops.mesh.select_all(action='DESELECT') #para deseleccionar todos los edges y verts
@@ -244,6 +285,13 @@ def animation_setup(flame_video_name, collection_name):
                     bpy.ops.mesh.reveal(select=False) #para revelar
                     
                     bpy.ops.object.mode_set(mode='OBJECT')
+                    
+                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.context.view_layer.objects.active = cilindro
+                bpy.ops.object.mode_set(mode='EDIT')
+                bpy.ops.mesh.select_all(action='SELECT')
+                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.ops.anim.insert_keyframe_animall()
 
             # Bindear cilindro y armature
             bpy.ops.object.mode_set(mode='OBJECT') 

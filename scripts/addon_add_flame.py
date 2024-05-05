@@ -18,6 +18,14 @@ from bpy_extras.object_utils import AddObjectHelper
 from mathutils import Vector
 import os
 import sys
+import subprocess
+
+## INSTALL MODULES ##
+path = sys.executable
+subprocess.call([path, "-m", "ensurepip"])
+modules = ["scikit-image", "opencv-python", "plantcv", "colour-science"]
+for module in modules:
+    subprocess.call([path, "-m", "pip", "install", module])
 
 def find_area(area_type):
     try:
@@ -162,10 +170,10 @@ class CANDLE_OT_dialog_box(Operator):
             animation_setup(video_name, new_col_name)
             transform_flame(self,context,new_col_name)
 
-            bpy.ops.object.select_all(action = 'DESELECT')
-            bpy.data.collections.get(new_col_name).objects[3].select_set(True)
-            bpy.ops.object.delete()
-            bpy.ops.object.select_all(action = 'DESELECT')
+            #bpy.ops.object.select_all(action = 'DESELECT')
+            #bpy.data.collections.get(new_col_name).objects[3].select_set(True)
+            #bpy.ops.object.delete()
+            #bpy.ops.object.select_all(action = 'DESELECT')
         else:
             #Existe en la escena
             duplicate_collection(self,context,col_name)
@@ -191,7 +199,7 @@ class CANDLE_OT_add_candle(Operator, AddObjectHelper):
         default=(1.0, 1.0, 1.0),
         subtype='TRANSLATION',
         description="scaling",
-    )#QUITAR?
+    )
 
     def execute(self, context):
 

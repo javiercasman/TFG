@@ -26,12 +26,13 @@ def resize_aspect_ratio(image, new_width):
 def generate_armature(flame_video_name, n_bones, n_rings, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_convex_hull, view_flame_skel):
     dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
+    #dir = (os.path.abspath(os.path.join(os.getcwd(), os.pardir))) #//TFG
     dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
     video_path = dir + ("\\") + flame_video_name
     if os.path.exists(video_path):
         flame_name = flame_video_name.split('.')[0]
         n_bones_n_rings = str(n_bones) + "_" + str(n_rings)
-        directory =  dir + "flames" + ("//") + flame_name + ("//") + n_bones_n_rings       # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
+        directory =  dir + ("//") + "flames" + ("//") + flame_name + ("//") + n_bones_n_rings       # La carpeta se llamará XXXXX (el video es XXXXX.mp4)
         bvh_file_path = directory + ("//") + "Armature_" + flame_name + ".bvh"
         cfg_file_path = directory + ("//") + "Config_" + flame_name + ".cfg"
         flame_mh_path = directory + ("//") + "candle-flame_" + flame_name + ".jpg"
@@ -102,18 +103,21 @@ def generate_armature(flame_video_name, n_bones, n_rings,
 
                 ## SKELETONIZE ##
 
-                ret, thresh = cv.threshold(gray_frame,110,255,cv.THRESH_BINARY)
+                ret, thresh = cv.threshold(gray_frame,100,255,cv.THRESH_BINARY)
 
                 skel = skeletonize(thresh)
                 skel_image = img_as_ubyte(skel)
-                pruned_skeleton, _, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto
+                pruned_skeleton, _, segment_objects = pcv.morphology.prune(skel_img=skel_image, size=60)        # Primera pruna de ramas innecesarias, sobretodo las de la parte superior del esqueleto               
 
                 corners = cv.cornerHarris(pruned_skeleton,2,27,0.02)        # Detección de las esquinas de la(s) pata(s) inferior(es)
                 corners = cv.dilate(corners, None)        # Dilatación de las esquinas detectadas para facilitar su eliminación
 
                 pruned_skeleton[corners>0.01*corners.max()] = 0        # Esquinas del esqueleto pintadas de negro, patas separadas
+
                 _, segment_objects = pcv.morphology.segment_skeleton(skel_img=pruned_skeleton)      # Dividimos el esqueleto en segmentos una vez separadas las patas
-                longest_segment = max(segment_objects, key=len)        # Cogemos el segmento más largo, es decir, el vertical, del cual generaremos los huesos
+                #longest_segment = max(segment_objects, key=len)        # Cogemos el segmento más largo, es decir, el vertical, del cual generaremos los huesos #CAMBIAR POR EL SEGMENTO QUE ESTÁ MÁS ARRIBA
+                longest_segment = min(segment_objects, key=lambda x: np.min(x[0][0][1])) # Cogemos el segmento más arriba
+
                 N = (len(longest_segment) / 2) + 1
                 longest_segment = longest_segment[:int(N)]        # Por algún motivo, el segmento devuelto por la función tiene la forma [x0y0, x1y1, ..., xn-1yn-1, xnyn, xn-1yn-1, xn-2yn-2, ..., x1y1], con esto cogemos directamente la mitad de la lista, es decir 
                                                                 # el segmento entero sin píxeles duplicados
@@ -154,7 +158,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                             offset_z, offset_x = (last_point_x - point[0]) * escala, (last_point_z - point[1]) * escala
                             tab_writer(i,f)
                             f.write("OFFSET {:.6f}".format(offset_x) + " {:.6f}".format(0) + " {:.6f}".format(offset_z) + "\n")           # Escribimos en el fichero '.bvh'
-                            if i != 6:
+                            if i != n_bones:
                                 tab_writer(i,f)
                                 if i == 0:
                                     f.write("CHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n")
@@ -182,8 +186,8 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                     f.write("{:.6f} ".format(0) + "{:.6f} ".format(0) + "{:.6f} ".format(0))        # XYZposition del primer hueso, en nuestro caso será 0 siempre ya que la base no se mueve
                     for i in range(n_bones):
                         point1, point2 = points[i], points[i+1]
-                        delta_x, delta_y = point1[0] - point2[0], point1[1] - point2[1]
-                        rads = np.arctan2(delta_y, delta_x)
+                        delta_y, delta_x = point1[0] - point2[0], point1[1] - point2[1] # La coordenadas estan invertidas en las imagenes
+                        rads = np.arctan2(delta_x, delta_y)
                         degrees = np.degrees(rads)
                         rotation = degrees
                         if i > 0:
@@ -191,8 +195,8 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         f.write("{:.6f} ".format(0) + "{:.6f} ".format(rotation) + "{:.6f} ".format(0))          # Rotación en Y
                         last_degrees = degrees         # Para calcular los grados necesitamos la referencia del anterior punto
                     f.write("\n")
-
-                ################
+                    
+                ##############
                 ## CILINDRO ##
 
                 contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
@@ -219,36 +223,56 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 for i in range(n_rings+1):
                     if i < n_rings: point1, point2 = points_w[i], points_w[i+1] 
                     else: point1, point2 = points_w[i], points_w[i-1]
-                    m = (point2[1] - point1[1]) / (point2[0] - point1[0])
-                    m_perpendicular = -1 / m if m != 0 else np.inf
+                    y_delta = (point2[1] - point1[1])
+                    x_delta = (point2[0] - point1[0])
+                    m = y_delta / x_delta if x_delta != 0 else np.inf
+                    m_perpendicular = -1.0 / m if m != 0 else np.inf
                     x1,y1 = point1
 
                     x_perpendicular = x1
-                    y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
-                    while True:
-                        if thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
-                            x_perpendicular += 1
-                            y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
-                            break
-                        x_perpendicular -= 1
+                    if m != 0: 
                         y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                    else:
+                        y_perpendicular = y1 + 1
+                    while True:
+                        if m!= 0:
+                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or (int(x_perpendicular) >= np.size(thresh_ch,1)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                                x_perpendicular += 1
+                                y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                                break
+                            x_perpendicular -= 1
+                            y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                        else:
+                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                                y_perpendicular -= 1
+                                break
+                            y_perpendicular += 1
 
-                    cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia izquierda
+                    cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia izquierda o hacia arriba
                     if write_config_file: 
                         l = math.dist(point1, [x_perpendicular, y_perpendicular]) * escala
                         f1.write(str(l) + " ")
 
                     x_perpendicular = x1
-                    y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
-                    while True:
-                        if thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
-                            x_perpendicular -= 1
-                            y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
-                            break
-                        x_perpendicular += 1
+                    if m != 0: 
                         y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                    else:
+                        y_perpendicular = y1 - 1
+                    while True:
+                        if m!= 0:
+                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or (int(x_perpendicular) >= np.size(thresh_ch,1)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                                x_perpendicular -= 1
+                                y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                                break
+                            x_perpendicular += 1
+                            y_perpendicular = y1 + m_perpendicular  * (x_perpendicular - x1)
+                        else:
+                            if (int(y_perpendicular) >= np.size(thresh_ch,0)) or thresh_ch[int(y_perpendicular), int(x_perpendicular)] == 0:
+                                y_perpendicular += 1
+                                break
+                            y_perpendicular -= 1
 
-                    cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia derecha
+                    cv.line(branch, point1, (int(x_perpendicular), int(y_perpendicular)), 255)      # Hacia derecha o hacia abajo
                     if write_config_file: 
                         l = math.dist(point1, [x_perpendicular, y_perpendicular]) * escala
                         f1.write(str(l) + " ")
@@ -257,9 +281,25 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 
                 ############
 
-                flame = gray_frame
+                flame = gray_frame.copy()
                 sk, _ = cv.findContours(branch, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
                 cv.drawContours(flame, sk, -1, (0, 0, 255), 1)
+
+                #test = branch
+
+                ##########
+                #cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", test)
+                #cv.imshow('test',test)
+                if frames == 86:
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86.png", frame)
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86_gray.png", flame)
+                elif frames == 50:
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\50.png", frame)
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\50_gray.png", flame)
+                elif frames == 90:
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
+                    cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
+                ##########
 
                 if view_gray: cv.imshow('gray',gray_frame)
                 if view_binary: cv.imshow('thresh',thresh)
@@ -268,7 +308,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 if view_convex_hull: cv.imshow('hull',thresh_ch)
                 if view_flame_skel: cv.imshow('flame_skel',flame)
                 if cv.waitKey(1) & 0xFF == ord('q'):
-                    break                                # Descomentar estas tres para imprimir cada frame del esqueleto después del procesamiento
+                    break
 
             video.release()
             cv.destroyAllWindows()
