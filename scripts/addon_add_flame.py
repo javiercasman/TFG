@@ -143,10 +143,11 @@ class CANDLE_OT_dialog_box(Operator):
     def execute(self,context):
         #Si le damos a OK:
         bpy.ops.object.select_all(action = 'DESELECT')
-        dir = os.path.dirname(bpy.data.filepath)
-        dir = (os.path.abspath(os.path.join(dir, os.pardir)))
-        dir = (os.path.abspath(os.path.join(dir, os.pardir))) #dos para atrás
-        dir = os.path.join(dir, "scripts")
+        # dir = os.path.dirname(bpy.data.filepath)
+        # dir = (os.path.abspath(os.path.join(dir, os.pardir)))
+        # dir = (os.path.abspath(os.path.join(dir, os.pardir))) #dos para atrás
+        # dir = os.path.join(dir, "scripts")
+        dir = os.path.dirname(os.path.abspath(__file__))
         if not dir in sys.path:
              sys.path.append(dir )
         from armature_generator import generate_armature as generate_armature

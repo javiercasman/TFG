@@ -25,9 +25,10 @@ def resize_aspect_ratio(image, new_width):
 
 def generate_armature(flame_video_name, n_bones, n_rings, 
                       view_gray, view_binary, view_skel_raw, view_skel_treated, view_flame_skel):
-    dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
+    # dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir))) #//TFG
+    dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)) #//TFG
     #dir = (os.path.abspath(os.path.join(os.getcwd(), os.pardir))) #//TFG
-    dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
+    #dir = (os.path.abspath(os.path.join(dir, os.pardir))) 
     video_path = dir + ("\\") + flame_video_name
     if os.path.exists(video_path):
         flame_name = flame_video_name.split('.')[0]
@@ -314,9 +315,9 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_skel.png", skel_image)
                 # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
                 # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
-                if frames == 1:
-                    cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\flame_skel.png", flame)
-                    cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", branch)
+                # if frames == 1:
+                #     cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\flame_skel.png", flame)
+                #     cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", branch)
                 
                 ##########
 

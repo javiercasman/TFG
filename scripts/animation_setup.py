@@ -19,8 +19,9 @@ def view3d_find( return_area = False ):
 
 def animation_setup(flame_video_name, collection_name):
     flame_name = flame_video_name.split('.')[0]
-    dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
-    dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
+    # dir = (os.path.abspath(os.path.join(bpy.path.abspath("//"), os.pardir)))
+    # dir = (os.path.abspath(os.path.join(dir, os.pardir))) #//TFG
+    dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)) 
     _, r, w = collection_name.split('_')
     directory =  dir + ("//") + "flames" + ("//") + flame_name + ("//") + r + ("_") + w
     if not os.path.exists(directory):
