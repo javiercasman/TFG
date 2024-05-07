@@ -82,7 +82,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         if contours:
                             mascara = np.zeros_like(gray_frame)
                             cv.drawContours(mascara, contours, -1, (255), thickness=cv.FILLED)
-                        _, thresh = cv.threshold(gray_frame, 235, 255, cv.THRESH_BINARY) #nos quedamos con los píxeles menores a 235
+                        _, thresh = cv.threshold(gray_frame, 200, 255, cv.THRESH_BINARY) #nos quedamos con los píxeles menores a 235
                         contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
                         mask = cv.bitwise_not(thresh)
                         no_white = cv.bitwise_and(mascara, mascara, mask=mask)
@@ -226,10 +226,10 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 for i in range(1,n_rings):
                     points_w.insert(0,longest_segment[step*i][0])
                 points_w.append(last)
-                points_w.insert(0,first) # Como hemos hecho convex hull, nos lo cargamos
+                points_w.insert(0,first)
                 
                 if frames == 1:
-                    for i in range(0, 12):
+                    for i in range(0, n_rings+1):
                         y = (first[1] - points_w[i][1]) * escala
                         if write_config_file: f1.write(str(y) + " ")
                     if write_config_file: f1.write("\n")
@@ -304,17 +304,17 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 ##########
                 #cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", test)
                 #cv.imshow('test',test)
-                # if frames == 86:
-                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\86.png", frame)
-                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\86_gray.png", flame)
-                # elif frames == 50:
+                #if frames == 86:
+                #    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86.png", frame)
+                #    cv.imwrite("D:\\TFG\\MEMORIA\\test\\86_gray.png", flame)
+                # if frames == 50:
                 #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\50.png", frame)
                 #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\50_gray.png", flame)
                 # if frames == 90:
-                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_corner.png", pruned_skeleton)
-                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_skel.png", skel_image)
-                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
-                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
+                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_corner.png", pruned_skeleton)
+                # #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_skel.png", skel_image)
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90.png", frame)
+                #     cv.imwrite("D:\\TFG\\MEMORIA\\test\\90_gray.png", flame)
                 # if frames == 1:
                 #     cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\flame_skel.png", flame)
                 #     cv.imwrite("D:\\TFG\\apartado 9\\skeletonize\\test.png", branch)

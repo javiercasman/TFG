@@ -80,7 +80,7 @@ def duplicate_collection(self, context, col_name): #Duplica la colección activa
 
 def add_candle(self, context, col_name):
     context.view_layer.active_layer_collection = context.view_layer.layer_collection
-    file_path = bpy.path.abspath("//") + ".." + ("//") + "espelma.blend"
+    file_path = self.main_path + ("//") + "Blender" + ("//") + "espelma.blend"
     inner_path = 'Collection'
     object_name = 'Candle'
     old_set = set(bpy.data.collections[:])
@@ -138,7 +138,7 @@ class CANDLE_OT_dialog_box(Operator):
     view_skel_treated: BoolProperty(name = "View processed skeleton", default = False, description = "Check to display video frames with processed skeleton + width lines")
     view_flame_skel: BoolProperty(name = "View gray frame + skeleton", default = False, description = "Check to display black and white video frames with treated skeleton overlaid")
 
-    
+    main_path = ""
     
     def execute(self,context):
         #Si le damos a OK:
@@ -147,9 +147,11 @@ class CANDLE_OT_dialog_box(Operator):
         # dir = (os.path.abspath(os.path.join(dir, os.pardir)))
         # dir = (os.path.abspath(os.path.join(dir, os.pardir))) #dos para atrás
         # dir = os.path.join(dir, "scripts")
-        dir = os.path.dirname(os.path.abspath(__file__))
+        #dir = os.path.dirname(os.path.abspath(__file__))
+        dir = context.preferences.filepaths.script_directories.values()[0].directory
+        self.main_path = (os.path.abspath(os.path.join(dir, os.pardir)))
         if not dir in sys.path:
-             sys.path.append(dir )
+            sys.path.append(dir )
         from armature_generator import generate_armature as generate_armature
         from armature_importer import import_armature as import_armature
         from animation_setup import animation_setup as animation_setup

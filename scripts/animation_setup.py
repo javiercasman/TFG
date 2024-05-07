@@ -93,7 +93,6 @@ def animation_setup(flame_video_name, collection_name):
                     verts.append(selected_verts)
                     #edges.append(selected_edges)
                     bpy.ops.object.mode_set(mode='EDIT') 
-
             #seleccionar edges y verts
             #bpy.ops.object.mode_set(mode='OBJECT') 
             #for edge in cilindro.data.edges:

@@ -2,7 +2,6 @@ import subprocess
 import sys
 
 path = sys.executable
-
 subprocess.call([path, "-m", "ensurepip"])
 
 modules = ["scikit-image", "opencv-python", "plantcv", "colour-science"]
