@@ -1,3 +1,12 @@
 __pycache__
-Blender/Pedret_models
-espelma.blend1
+Blender/Pedret_models/bakes
+Blender/Pedret_models/bakes2k
+Blender/Pedret_models/bakes4K
+Blender/Pedret_models/Pedret_XIII_2k.blend
+*.fbx
+*.glb
+*.mtl
+*.obj
+*.blend1
+old_files
+scripts/__pycache__

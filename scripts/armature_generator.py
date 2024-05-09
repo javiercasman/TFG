@@ -82,7 +82,7 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                         if contours:
                             mascara = np.zeros_like(gray_frame)
                             cv.drawContours(mascara, contours, -1, (255), thickness=cv.FILLED)
-                        _, thresh = cv.threshold(gray_frame, 200, 255, cv.THRESH_BINARY) #nos quedamos con los píxeles menores a 235
+                        _, thresh = cv.threshold(gray_frame, 235, 255, cv.THRESH_BINARY) #nos quedamos con los píxeles menores a 235
                         contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
                         mask = cv.bitwise_not(thresh)
                         no_white = cv.bitwise_and(mascara, mascara, mask=mask)
