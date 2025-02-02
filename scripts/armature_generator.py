@@ -7,7 +7,7 @@ from scipy.ndimage import binary_fill_holes as binary_fill_holes
 import cv2 as cv
 from plantcv import plantcv as pcv
 import math
-import bpy
+#import bpy
 import colour
 import os
 
@@ -219,6 +219,8 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 ##############
                 ## CILINDRO ##
 
+                #cv.imwrite('D:\\TFG\\DEFENSA\\treated\\treated_' + str(frames) + '.png', branch)
+
                 # Puntos para calcular la anchura (n_rings)
                 last, first = longest_segment[0][0], longest_segment[-1][0]
                 step = int(n_pixels/n_rings)
@@ -321,11 +323,16 @@ def generate_armature(flame_video_name, n_bones, n_rings,
                 
                 ##########
 
-                if view_gray: cv.imshow('gray',gray_frame)
-                if view_binary: cv.imshow('thresh',thresh)
-                if view_skel_raw: cv.imshow('Skeleton', skel_image)
-                if view_skel_treated: cv.imshow('branch', branch)
-                if view_flame_skel: cv.imshow('flame_skel',flame)
+                if view_gray: 
+                    cv.imshow('gray',gray_frame)
+                if view_binary: 
+                    cv.imshow('thresh',thresh)
+                if view_skel_raw: 
+                    cv.imshow('Skeleton', skel_image)
+                if view_skel_treated: 
+                    cv.imshow('branch', branch)
+                if view_flame_skel: 
+                    cv.imshow('flame_skel',flame)
                 if cv.waitKey(5) & 0xFF == ord('q'):
                     break
 
