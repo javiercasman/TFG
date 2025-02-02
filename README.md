@@ -1,7 +1,7 @@
 # TFG
 Trabajo de Fin de Grado - FIB UPC 2023/24 Q1
 
-Realizado por Javier Castaño Mansillas
+Realizado por Javier Castaño Mansilla
 
 ## Guía de uso
 
